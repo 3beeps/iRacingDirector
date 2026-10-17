@@ -44,7 +44,9 @@ public sealed class TrayIcon : IDisposable
             Visible = true,
         };
         _icon.MouseClick += (_, e) => { if (e.Button == Forms.MouseButtons.Left) App.ShowMain(); };
+        _icon.BalloonTipClicked += (_, _) => App.ShowMain();
 
+        _vm.Updates.UpdateFound += OnUpdateFound;
         _vm.Settings.PropertyChanged += OnChanged;
         _vm.Director.PropertyChanged += OnChanged;
         UpdateText();
@@ -52,6 +54,9 @@ public sealed class TrayIcon : IDisposable
 
     public void ShowBalloon(string title, string text) =>
         _icon.ShowBalloonTip(3000, title, text, Forms.ToolTipIcon.None);
+
+    private void OnUpdateFound(ReleaseInfo release) =>
+        ShowBalloon("Update available", $"iRacing Director {release.Version} is ready. Click here, then click the banner to install.");
 
     private void OnChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -77,6 +82,7 @@ public sealed class TrayIcon : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        _vm.Updates.UpdateFound -= OnUpdateFound;
         _vm.Settings.PropertyChanged -= OnChanged;
         _vm.Director.PropertyChanged -= OnChanged;
         _icon.Visible = false;

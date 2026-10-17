@@ -55,6 +55,25 @@
 
         <DockPanel Grid.Column="1" Margin="24,20,24,20">
 
+            <!-- Update banner -->
+            <Border DockPanel.Dock="Top" Margin="0,0,0,12" Padding="16,10" CornerRadius="8" Cursor="Hand"
+                    Background="{StaticResource AccentBrush}" MouseLeftButtonUp="UpdateBanner_Click"
+                    Visibility="{Binding Updates.IsUpdateAvailable, Converter={StaticResource BoolToVis}}"
+                    AutomationProperties.Name="Install update">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource Icon}" Text="&#xE896;" Foreground="White" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Margin="12,0" Text="{Binding Updates.BannerText}" Foreground="White"
+                               FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="2" Text="Install update" Foreground="White" VerticalAlignment="Center"
+                               TextDecorations="Underline" />
+                </Grid>
+            </Border>
+
             <!-- Status header -->
             <Border DockPanel.Dock="Top" Style="{StaticResource Card}" Margin="0,0,0,18" Padding="18,14">
                 <Grid>
@@ -346,6 +365,13 @@
                                         <TextBlock Style="{StaticResource Muted}" TextWrapping="Wrap"
                                                    Text="Needed to close apps that run as administrator (like SimHub). With 'Start when I sign in' there's no UAC prompt." />
                                         <TextBlock Style="{StaticResource Muted}" Text="{Binding ElevationText}" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </CheckBox>
+                                <CheckBox Style="{StaticResource Switch}" Margin="0,12,0,0" IsChecked="{Binding Settings.CheckForUpdates}">
+                                    <StackPanel>
+                                        <TextBlock Text="Check for updates automatically" />
+                                        <TextBlock Style="{StaticResource Muted}" TextWrapping="Wrap"
+                                                   Text="Looks for a new version on GitHub when Director starts and once a day. Nothing installs until you click the banner." />
                                     </StackPanel>
                                 </CheckBox>
                             </StackPanel>

@@ -58,6 +58,8 @@ public partial class MainWindow : Window
     private async void StartApps_Click(object sender, RoutedEventArgs e) => await _vm.StartAppsAsync();
     private async void CloseApps_Click(object sender, RoutedEventArgs e) => await _vm.CloseAppsAsync();
 
+    private async void UpdateBanner_Click(object sender, RoutedEventArgs e) => await _vm.InstallUpdateAsync();
+
     // ---- Apps ----
 
     private static AppEntry AppOf(object sender) => (AppEntry)((FrameworkElement)sender).DataContext;

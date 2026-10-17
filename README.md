@@ -28,9 +28,41 @@ What your friends will see:
 2. **The setup screen** on first launch, listing the racing apps it found. They switch on the ones they use, then click **Finish setup**.
 3. **An administrator prompt**, if they kept *Run as administrator* on (recommended with SimHub). They only see it once; after that Director starts at sign-in without asking.
 
-To update, send the new installer. It closes the running copy and keeps their settings. You can uninstall from Windows Settings > Apps, and it asks whether to delete your settings too.
+Friends get new versions on their own (see [Releasing an update](#releasing-an-update)). Director checks GitHub when it starts and once a day. When there's a newer release it shows an **Update available** banner at the top of the window and a tray notification. Clicking the banner downloads the new installer and runs it silently: Director closes, updates, keeps its settings and starts again. Friends can turn this off under Settings > *Check for updates automatically*. You can uninstall from Windows Settings > Apps, and it asks whether to delete your settings too.
 
 Settings and logs live in `%APPDATA%\iRacing Director`.
+
+## Releasing an update
+
+Releases are published to GitHub ([3beeps/iRacingDirector](https://github.com/3beeps/iRacingDirector/releases)), which is where the update check looks. The repo must stay public so friends' copies can read releases without signing in.
+
+One-time setup:
+
+```bash
+winget install GitHub.cli
+```
+
+```bash
+gh auth login
+```
+
+You also need Inno Setup (`winget install JRSoftware.InnoSetup`), the same as for building the installer.
+
+To release, commit your changes, then run:
+
+```bash
+powershell -ExecutionPolicy Bypass -File tools/release.ps1 -Version 1.2.0 -Notes "What changed"
+```
+
+The script:
+
+1. Checks that the working tree is clean and that the version is newer than the one in `iRacingDirector.csproj`.
+2. Sets `<Version>` in `src/iRacingDirector/iRacingDirector.csproj`.
+3. Runs `tools/build-installer.ps1` to build `dist\iRacingDirector-Setup-1.2.0.exe`.
+4. Commits the version bump as "Release v1.2.0", tags it `v1.2.0`, and pushes the commit and tag.
+5. Runs `gh release create v1.2.0` with the setup exe attached. Without `-Notes`, GitHub writes the notes from the commits.
+
+Running copies pick it up at their next start or within 24 hours. The update check only uses the latest non-draft, non-prerelease release, and only if its tag looks like `vX.Y.Z` and it has an `iRacingDirector-Setup-*.exe` asset. Copies older than 1.2.0 have no update check, so friends on those still need the installer sent once.
 
 ## Develop
 
@@ -47,6 +79,7 @@ dotnet test iRacingDirector.sln
 - `src/iRacingDirector/UI`: WPF windows (main, setup, program picker, app editor), view model, tray icon
 - `installer/iRacingDirector.iss`: Inno Setup script (`winget install JRSoftware.InnoSetup`)
 - `tools/build-installer.ps1`: self-contained publish plus installer
+- `tools/release.ps1`: version bump, installer, tag and GitHub release (see above)
 - `tools/make-icon.ps1`: regenerates the app icon
 
 To recognize another app automatically, add it to `DefaultApps.Catalog`.

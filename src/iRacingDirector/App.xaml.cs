@@ -26,6 +26,7 @@ public partial class App : Application
     private EventWaitHandle? _exitEvent;
     private TrayIcon? _tray;
     private Director? _director;
+    private UpdateChecker? _updates;
 
     public MainViewModel? ViewModel { get; private set; }
 
@@ -72,7 +73,8 @@ public partial class App : Application
         StartupManager.Apply(settings.StartWithWindows, settings.RunAsAdmin, log);
 
         _director = new Director(settings, log);
-        ViewModel = new MainViewModel(settings, _director, log);
+        _updates = new UpdateChecker(settings, log);
+        ViewModel = new MainViewModel(settings, _director, _updates, log);
         _tray = new TrayIcon(ViewModel);
 
         var window = new MainWindow(ViewModel);
@@ -81,6 +83,7 @@ public partial class App : Application
         if (!startHidden) window.Show();
 
         _director.Start();
+        _updates.Start();
     }
 
     private bool TryBecomeSingleInstance()
@@ -197,6 +200,7 @@ public partial class App : Application
     {
         if (MainWindow is MainWindow mw) mw.AllowClose = true;
         _tray?.Dispose();
+        _updates?.Dispose();
         _director?.Dispose();
         Shutdown();
     }

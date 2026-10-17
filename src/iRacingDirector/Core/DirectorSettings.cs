@@ -14,6 +14,7 @@ public sealed class DirectorSettings : ObservableObject
     private bool _closeToTray = true;
     private bool _runAsAdmin;
     private bool _onlyCloseAppsDirectorStarted;
+    private bool _checkForUpdates = true;
     private int _sessionEndDelaySeconds = 15;
     private int _closeGraceSeconds = 5;
     private string _simProcessName = DefaultSimProcess;
@@ -31,6 +32,9 @@ public sealed class DirectorSettings : ObservableObject
     public bool CloseToTray { get => _closeToTray; set => SetField(ref _closeToTray, value); }
     public bool RunAsAdmin { get => _runAsAdmin; set => SetField(ref _runAsAdmin, value); }
     public bool OnlyCloseAppsDirectorStarted { get => _onlyCloseAppsDirectorStarted; set => SetField(ref _onlyCloseAppsDirectorStarted, value); }
+
+    /// <summary>Look for a newer release on GitHub at startup and once a day.</summary>
+    public bool CheckForUpdates { get => _checkForUpdates; set => SetField(ref _checkForUpdates, value); }
 
     /// <summary>
     /// How long the sim must stay closed before apps are shut down. Prevents app churn

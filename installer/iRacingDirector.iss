@@ -40,6 +40,8 @@ Name: "{userdesktop}\iRacing Director"; Filename: "{app}\iRacingDirector.exe"; T
 
 [Run]
 Filename: "{app}\iRacingDirector.exe"; Description: "Start iRacing Director"; Flags: nowait postinstall skipifsilent
+; In-app updates run "/SILENT /RELAUNCH=1", so Director comes back after the update.
+Filename: "{app}\iRacingDirector.exe"; Flags: nowait; Check: ShouldRelaunch
 
 [UninstallRun]
 ; Closes Director and removes its sign-in startup entry.
@@ -65,6 +67,11 @@ begin
     Delete(A, 1, PA);
     Delete(B, 1, PB);
   end;
+end;
+
+function ShouldRelaunch: Boolean;
+begin
+  Result := WizardSilent and (ExpandConstant('{param:relaunch|0}') = '1');
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;

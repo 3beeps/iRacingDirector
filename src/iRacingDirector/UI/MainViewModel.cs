@@ -23,10 +23,11 @@ public sealed class MainViewModel : ObservableObject
     private readonly DispatcherTimer _clock;
     private string _sessionDuration = "";
 
-    public MainViewModel(DirectorSettings settings, Director director, Logger log)
+    public MainViewModel(DirectorSettings settings, Director director, UpdateChecker updates, Logger log)
     {
         Settings = settings;
         Director = director;
+        Updates = updates;
         Log = log;
 
         Settings.PropertyChanged += OnSettingChanged;
@@ -40,6 +41,7 @@ public sealed class MainViewModel : ObservableObject
 
     public DirectorSettings Settings { get; }
     public Director Director { get; }
+    public UpdateChecker Updates { get; }
     public Logger Log { get; }
     public ObservableCollection<AppEntry> Apps => Settings.Apps;
     public ObservableCollection<LogEntry> LogEntries => Log.Entries;
@@ -57,6 +59,7 @@ public sealed class MainViewModel : ObservableObject
     public Task StartAppsAsync() => Director.StartAppsAsync(manual: true);
     public Task CloseAppsAsync() => Director.CloseAppsAsync(manual: true);
     public Task CloseEverythingAsync() => Director.CloseEverythingAsync();
+    public Task InstallUpdateAsync() => Updates.InstallAsync();
 
     public void Save() => SettingsStore.Save(Settings, Log);
 
