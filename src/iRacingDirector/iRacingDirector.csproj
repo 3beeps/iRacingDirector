@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>iRacingDirector</AssemblyName>
+    <RootNamespace>IRacingDirector</RootNamespace>
+    <ApplicationIcon>Assets\director.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Product>iRacing Director</Product>
+    <Description>Launches and closes your sim racing apps alongside iRacing.</Description>
+    <Version>1.0.0</Version>
+    <!-- WPF takes DPI awareness from the manifest; the WinForms analyzer doesn't know that. -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\director.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="iRacingDirector.Tests" />
+  </ItemGroup>
+
+</Project>
