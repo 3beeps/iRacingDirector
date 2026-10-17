@@ -20,6 +20,8 @@ public static class StartupManager
 
     public static void Apply(bool startWithWindows, bool asAdmin, Logger log)
     {
+        // The startup entry is shared by every copy; a test copy must not rewrite or delete the real one.
+        if (AppPaths.IsCustomDataDir) return;
         try
         {
             var useTask = startWithWindows && asAdmin;
@@ -77,6 +79,26 @@ public static class StartupManager
         else if (key.GetValue(EntryName) is not null) key.DeleteValue(EntryName);
     }
 
+    /// <summary>
+    /// Starts Director through its elevated sign-in task, which runs it as administrator without a UAC
+    /// prompt. Only if the task exists and points at this exe. Returns false if it couldn't.
+    /// </summary>
+    public static bool TryStartElevatedTask()
+    {
+        if (AppPaths.IsCustomDataDir) return false;
+        try
+        {
+            var (code, xml) = RunSchtasksWithOutput($"/Query /TN \"{EntryName}\" /XML");
+            if (code != 0 || !xml.Contains(SecurityElement.Escape(AppPaths.ExePath), StringComparison.OrdinalIgnoreCase))
+                return false;
+            return RunSchtasks($"/Run /TN \"{EntryName}\"") == 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private static bool TaskExists() => RunSchtasks($"/Query /TN \"{EntryName}\"") == 0;
 
     private static void DeleteTask() => RunSchtasks($"/Delete /TN \"{EntryName}\" /F");
@@ -121,7 +143,9 @@ public static class StartupManager
         }
     }
 
-    private static int RunSchtasks(string args)
+    private static int RunSchtasks(string args) => RunSchtasksWithOutput(args).Code;
+
+    private static (int Code, string Output) RunSchtasksWithOutput(string args)
     {
         using var p = Process.Start(new ProcessStartInfo("schtasks.exe", args)
         {
@@ -130,9 +154,10 @@ public static class StartupManager
             RedirectStandardOutput = true,
             RedirectStandardError = true,
         })!;
-        p.StandardOutput.ReadToEnd();
-        p.StandardError.ReadToEnd();
-        p.WaitForExit(10000);
-        return p.ExitCode;
+        var errors = p.StandardError.ReadToEndAsync();
+        var output = p.StandardOutput.ReadToEnd();
+        errors.Wait(10000);
+        if (!p.WaitForExit(10000)) return (-1, output);
+        return (p.ExitCode, output);
     }
 }

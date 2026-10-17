@@ -4,6 +4,8 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using IRacingDirector.Core;
@@ -28,10 +30,57 @@ public static class ProcessController
         return list;
     }
 
-    public static bool IsRunning(AppEntry app, IReadOnlyList<(string Name, int Id)> snapshot)
+    public static bool IsRunning(AppEntry app, IReadOnlyList<(string Name, int Id)> snapshot) =>
+        snapshot.Any(p => Belongs(app, p.Name, p.Id, TryGetPath));
+
+    /// <summary>
+    /// Whether a running process is part of the app. The app's own exe only counts when it runs from the
+    /// app's folder (so a shared name like "Update.exe" doesn't catch other programs); extra names match by
+    /// name. Protected Windows processes never match.
+    /// </summary>
+    internal static bool Belongs(AppEntry app, string name, int id, Func<int, string?> pathOf)
     {
-        var patterns = app.GetProcessPatterns();
-        return patterns.Count > 0 && snapshot.Any(p => ProcessMatcher.MatchesAny(p.Name, patterns));
+        if (id == Environment.ProcessId || ProcessMatcher.IsProtected(name)) return false;
+
+        if (app.MainProcessName is { } main && string.Equals(name, main, StringComparison.OrdinalIgnoreCase))
+        {
+            var path = pathOf(id);
+            if (path is null) return true; // Can't tell where it runs from; trust the name.
+            var folder = Path.GetDirectoryName(app.Path);
+            if (string.IsNullOrEmpty(folder)) return true;
+            if (path.StartsWith(folder.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase)) return true;
+            // Same name from another folder: only ours if an extra pattern claims it.
+        }
+
+        return ProcessMatcher.MatchesAny(name, app.GetExtraPatterns());
+    }
+
+    private const uint ProcessQueryLimitedInformation = 0x1000;
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr OpenProcess(uint access, bool inherit, int pid);
+
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern bool QueryFullProcessImageNameW(IntPtr process, uint flags, StringBuilder name, ref uint size);
+
+    [DllImport("kernel32.dll")]
+    private static extern bool CloseHandle(IntPtr handle);
+
+    /// <summary>Full exe path of a process, or null if Windows won't say (works for admin processes too).</summary>
+    internal static string? TryGetPath(int pid)
+    {
+        var handle = OpenProcess(ProcessQueryLimitedInformation, false, pid);
+        if (handle == IntPtr.Zero) return null;
+        try
+        {
+            var buffer = new StringBuilder(1024);
+            var size = (uint)buffer.Capacity;
+            return QueryFullProcessImageNameW(handle, 0, buffer, ref size) ? buffer.ToString(0, (int)size) : null;
+        }
+        finally
+        {
+            CloseHandle(handle);
+        }
     }
 
     public static bool Launch(AppEntry app, Logger log)
@@ -68,16 +117,38 @@ public static class ProcessController
     }
 
     /// <summary>
+    /// Starts a program as the signed-in user without admin rights, even from an elevated Director:
+    /// Explorer (which never runs elevated) does the launch. Explorer can't pass arguments, so this is
+    /// only for programs that don't need any.
+    /// </summary>
+    public static bool LaunchAsUser(AppEntry app, Logger log)
+    {
+        if (!app.PathExists)
+        {
+            log.Error($"{app.Name}: file not found ({app.Path}).");
+            return false;
+        }
+        try
+        {
+            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{app.Path}\"") { UseShellExecute = true })?.Dispose();
+            log.Success($"Started {app.Name}.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            log.Warn($"{app.Name}: couldn't start it as a normal user ({ex.Message}); starting it directly.");
+            return Launch(app, log);
+        }
+    }
+
+    /// <summary>
     /// Asks every process of the app to close, then force-closes whatever is left after the grace period.
     /// Returns true if nothing of the app is left running.
     /// </summary>
     public static async Task<bool> CloseAsync(AppEntry app, TimeSpan grace, Logger log, CancellationToken ct = default)
     {
-        var patterns = app.GetProcessPatterns();
-        if (patterns.Count == 0) return true;
-
         var targets = Snapshot()
-            .Where(p => p.Id != Environment.ProcessId && ProcessMatcher.MatchesAny(p.Name, patterns))
+            .Where(p => Belongs(app, p.Name, p.Id, TryGetPath))
             .Select(p => p.Id)
             .ToHashSet();
         if (targets.Count == 0) return true;

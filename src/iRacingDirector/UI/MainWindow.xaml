@@ -392,7 +392,7 @@
                                 <TextBlock Text="Sim process name" Margin="0,14,0,6" />
                                 <TextBox Text="{Binding Settings.SimProcessName}" HorizontalAlignment="Left" Width="260" />
                                 <TextBlock Style="{StaticResource Muted}" Margin="0,4,0,0" TextWrapping="Wrap"
-                                           Text="A session counts as started while this process runs. Default: iRacingSim64DX11" />
+                                           Text="A session counts as started while this process runs. * is a wildcard. Default: iRacingSim64*" />
                             </StackPanel>
                         </Border>
                     </StackPanel>

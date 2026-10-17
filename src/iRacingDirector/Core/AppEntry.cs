@@ -58,15 +58,29 @@ public sealed class AppEntry : ObservableObject
     [JsonIgnore] public string StatusText { get => _statusText; set => SetField(ref _statusText, value); }
     [JsonIgnore] public bool PathExists => File.Exists(Path) || Directory.Exists(Path);
 
+    /// <summary>Process name of the app's own exe (matched together with its folder), or null if Path isn't an exe.</summary>
+    [JsonIgnore]
+    public string? MainProcessName =>
+        !string.IsNullOrWhiteSpace(Path) && Path.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+            ? System.IO.Path.GetFileNameWithoutExtension(Path)
+            : null;
+
+    /// <summary>
+    /// Extra process-name patterns from <see cref="ExtraProcessNames"/>. Patterns that are too broad
+    /// (fewer than 3 non-wildcard characters, like "*" or "a*") are dropped so a typo can't match every process.
+    /// </summary>
+    public IReadOnlyList<string> GetExtraPatterns() => ExtraProcessNames
+        .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Select(p => p.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? p[..^4] : p)
+        .Where(ProcessMatcher.IsSpecificEnough)
+        .ToList();
+
     /// <summary>All process-name patterns that identify this app.</summary>
     public IReadOnlyList<string> GetProcessPatterns()
     {
         var list = new List<string>();
-        if (!string.IsNullOrWhiteSpace(Path) && Path.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-            list.Add(System.IO.Path.GetFileNameWithoutExtension(Path));
-        list.AddRange(ExtraProcessNames
-            .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(p => p.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? p[..^4] : p));
+        if (MainProcessName is { } main) list.Add(main);
+        list.AddRange(GetExtraPatterns());
         return list;
     }
 

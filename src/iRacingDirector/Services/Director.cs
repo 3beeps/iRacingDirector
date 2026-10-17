@@ -72,7 +72,7 @@ public sealed class Director : ObservableObject, IDisposable
         var uiName = System.IO.Path.GetFileNameWithoutExtension(_settings.IRacingUiPath);
         IRacingUiRunning = snapshot.Any(p => string.Equals(p.Name, uiName, StringComparison.OrdinalIgnoreCase));
 
-        var simRunning = snapshot.Any(p => string.Equals(p.Name, _settings.SimProcessName, StringComparison.OrdinalIgnoreCase));
+        var simRunning = snapshot.Any(p => ProcessMatcher.Matches(p.Name, _settings.SimProcessName));
         _tracker.EndDelay = TimeSpan.FromSeconds(_settings.SessionEndDelaySeconds);
         var ev = _tracker.Update(simRunning, DateTime.Now);
         State = _tracker.State;
@@ -195,7 +195,10 @@ public sealed class Director : ObservableObject, IDisposable
     {
         if (IRacingUiRunning) { _log.Info("The iRacing UI is already open."); return; }
         var ui = new AppEntry { Name = "iRacing", Path = _settings.IRacingUiPath };
-        ProcessController.Launch(ui, _log);
+        // iRacing shouldn't inherit Director's admin rights: an elevated sim can lock out
+        // overlays and tools the user starts normally.
+        if (Elevation.IsElevated) ProcessController.LaunchAsUser(ui, _log);
+        else ProcessController.Launch(ui, _log);
     }
 
     /// <summary>Closes the sim and the iRacing UI, then the support apps.</summary>

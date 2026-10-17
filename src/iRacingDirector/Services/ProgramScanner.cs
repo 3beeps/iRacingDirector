@@ -23,8 +23,15 @@ public static class ProgramScanner
     /// <summary>Scans once in the background; later calls reuse the result.</summary>
     public static Task<IReadOnlyList<InstalledProgram>> GetProgramsAsync(bool refresh = false)
     {
-        if (refresh || _cached is null) _cached = Task.Run(Scan);
+        if (refresh || _cached is null) _cached = Task.Run(SafeScan);
         return _cached;
+    }
+
+    /// <summary>Never throws: a broken shortcut or missing COM component just means fewer programs listed.</summary>
+    private static IReadOnlyList<InstalledProgram> SafeScan()
+    {
+        try { return Scan(); }
+        catch { return Array.Empty<InstalledProgram>(); }
     }
 
     private static IReadOnlyList<InstalledProgram> Scan()

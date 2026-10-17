@@ -11,6 +11,10 @@ public static class AppPaths
             ? custom
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "iRacing Director"));
 
+    /// <summary>True for a test copy using IRACING_DIRECTOR_DATA; such copies leave machine-wide settings alone.</summary>
+    public static bool IsCustomDataDir { get; } =
+        Environment.GetEnvironmentVariable("IRACING_DIRECTOR_DATA") is { Length: > 0 };
+
     public static string SettingsFile => Path.Combine(DataDir, "settings.json");
     public static string LogFile => Path.Combine(DataDir, "director.log");
 

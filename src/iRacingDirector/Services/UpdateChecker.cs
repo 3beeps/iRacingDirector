@@ -12,7 +12,8 @@ using IRacingDirector.Core;
 
 namespace IRacingDirector.Services;
 
-public sealed record ReleaseInfo(Version Version, string Tag, string SetupName, string SetupUrl, string PageUrl);
+/// <param name="Sha256">Lower-case hex SHA-256 GitHub publishes for the setup asset, or null if it gave none.</param>
+public sealed record ReleaseInfo(Version Version, string Tag, string SetupName, string SetupUrl, string PageUrl, string? Sha256 = null);
 
 /// <summary>
 /// Looks for a newer release on GitHub at startup and every 24 hours, and installs it on request.
@@ -150,19 +151,37 @@ public sealed class UpdateChecker : ObservableObject, IDisposable
         IsInstalling = true;
         try
         {
-            var path = Path.Combine(Path.GetTempPath(), release.SetupName);
-            var partial = path + ".download";
+            // A fresh folder per download, so nothing else can have planted or swapped the file beforehand.
+            var folder = Path.Combine(Path.GetTempPath(), "iRacingDirector-update-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(folder);
+            var path = Path.Combine(folder, release.SetupName);
             _log.Info($"Downloading iRacing Director {release.Version}...");
             using (var response = await Http.GetAsync(release.SetupUrl, HttpCompletionOption.ResponseHeadersRead))
             {
                 response.EnsureSuccessStatusCode();
-                await using var file = File.Create(partial);
+                await using var file = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
                 await response.Content.CopyToAsync(file);
             }
-            File.Move(partial, path, overwrite: true);
+
+            if (release.Sha256 is { } expected)
+            {
+                string actual;
+                await using (var file = File.OpenRead(path))
+                    actual = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(file)).ToLowerInvariant();
+                if (actual != expected)
+                {
+                    File.Delete(path);
+                    throw new InvalidDataException("the download didn't match the checksum GitHub published, so it wasn't installed");
+                }
+            }
 
             _log.Info("Installing the update. Director will close and start again when it's done.");
-            Process.Start(new ProcessStartInfo(path, "/SILENT /SUPPRESSMSGBOXES /NORESTART /RELAUNCH=1") { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo(path, "/SILENT /SUPPRESSMSGBOXES /NORESTART /RELAUNCH=1") { UseShellExecute = true })?.Dispose();
+
+            // The installer closes Director within seconds. Still here after two minutes means it didn't run.
+            await Task.Delay(TimeSpan.FromMinutes(2));
+            _log.Warn("The update didn't finish. Click the banner to try again.");
+            IsInstalling = false;
         }
         catch (Exception ex)
         {
@@ -194,7 +213,11 @@ public sealed class UpdateChecker : ObservableObject, IDisposable
             var url = asset.TryGetProperty("browser_download_url", out var u) ? u.GetString() : null;
             if (name is null || url is null || !SetupAssetName.IsMatch(name)) continue;
             if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps) continue;
-            return new ReleaseInfo(version, tag, name, url, page);
+            var digest = asset.TryGetProperty("digest", out var d) ? d.GetString() : null;
+            var sha256 = digest is not null && digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase)
+                ? digest[7..].ToLowerInvariant()
+                : null;
+            return new ReleaseInfo(version, tag, name, url, page, sha256);
         }
         return null;
     }

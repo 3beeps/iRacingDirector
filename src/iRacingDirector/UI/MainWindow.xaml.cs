@@ -40,6 +40,7 @@ public partial class MainWindow : Window
             {
                 _trayHintShown = true;
                 _vm.Log.Info("Director is still running in the tray. Right-click the tray icon to exit.");
+                ((App)Application.Current).ShowTrayHint();
             }
             return;
         }
@@ -125,6 +126,6 @@ public partial class MainWindow : Window
             return;
 
         if (!((App)Application.Current).Restart(elevated: wantAdmin))
-            _vm.Log.Warn("Restart cancelled.");
+            _vm.Log.Warn($"Restart didn't happen ({Elevation.LastError}).");
     }
 }

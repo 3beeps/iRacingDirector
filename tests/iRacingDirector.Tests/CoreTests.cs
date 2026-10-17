@@ -81,6 +81,61 @@ public class ProcessMatcherTests
     }
 }
 
+public class ProcessSafetyTests
+{
+    private static readonly AppEntry Discord = new() { Name = "Discord PTB", Path = @"C:\Users\x\AppData\Local\DiscordPTB\Update.exe" };
+
+    [Theory]
+    [InlineData("*")]
+    [InlineData("a*")]
+    [InlineData("??*")]
+    [InlineData(" * ")]
+    public void BroadPatternsMatchNothing(string pattern)
+    {
+        Assert.False(ProcessMatcher.Matches("explorer", pattern));
+        Assert.False(ProcessMatcher.Matches("SimHubWPF", pattern));
+        var app = new AppEntry { Path = @"C:\x\tool.exe", ExtraProcessNames = pattern };
+        Assert.Empty(app.GetExtraPatterns());
+    }
+
+    [Fact]
+    public void SameExeNameFromAnotherFolderIsNotTheApp()
+    {
+        // Another program's Update.exe must not be closed along with Discord PTB.
+        Assert.False(ProcessController.Belongs(Discord, "Update", 100, _ => @"C:\Users\x\AppData\Local\SomethingElse\Update.exe"));
+        Assert.True(ProcessController.Belongs(Discord, "Update", 101, _ => @"C:\Users\x\AppData\Local\DiscordPTB\Update.exe"));
+        // Subfolders of the app count (e.g. apps that run from app-1.2.3\).
+        Assert.True(ProcessController.Belongs(Discord, "Update", 102, _ => @"C:\Users\x\AppData\Local\DiscordPTB\app-1.0\Update.exe"));
+        // Path unknown (Windows wouldn't say): trust the name.
+        Assert.True(ProcessController.Belongs(Discord, "Update", 103, _ => null));
+    }
+
+    [Fact]
+    public void ExtraNamesStillMatchFromAnywhere()
+    {
+        var g61 = new AppEntry { Path = @"C:\g61-install\garage61-launcher.exe", ExtraProcessNames = "garage61-agent*" };
+        Assert.True(ProcessController.Belongs(g61, "garage61-agent-2026", 200, _ => @"C:\elsewhere\garage61-agent-2026.exe"));
+    }
+
+    [Theory]
+    [InlineData("explorer")]
+    [InlineData("svchost")]
+    [InlineData("csrss")]
+    [InlineData("iRacingService64")]
+    public void WindowsProcessesAreNeverPartOfAnApp(string name)
+    {
+        var app = new AppEntry { Path = $@"C:\Windows\{name}.exe", ExtraProcessNames = name };
+        Assert.False(ProcessController.Belongs(app, name, 300, _ => $@"C:\Windows\{name}.exe"));
+    }
+
+    [Theory]
+    [InlineData("iRacingSim64DX11", true)]
+    [InlineData("iRacingSim64DX12", true)]
+    [InlineData("iRacingUI", false)]
+    public void DefaultSimPatternFindsTheSim(string process, bool expected) =>
+        Assert.Equal(expected, ProcessMatcher.Matches(process, DirectorSettings.DefaultSimProcess));
+}
+
 public class CatalogTests
 {
     [Fact]

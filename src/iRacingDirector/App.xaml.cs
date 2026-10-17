@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using IRacingDirector.Core;
 using IRacingDirector.Services;
@@ -27,6 +28,7 @@ public partial class App : Application
     private TrayIcon? _tray;
     private Director? _director;
     private UpdateChecker? _updates;
+    private bool _showRequested;
 
     public MainViewModel? ViewModel { get; private set; }
 
@@ -39,6 +41,15 @@ public partial class App : Application
             log.Error($"Unexpected error: {ex.Exception.Message}");
             ex.Handled = true;
         };
+        TaskScheduler.UnobservedTaskException += (_, ex) =>
+        {
+            log.Error($"Unexpected background error: {ex.Exception.GetBaseException().Message}");
+            ex.SetObserved();
+        };
+        AppDomain.CurrentDomain.UnhandledException += (_, ex) =>
+            log.Error($"Fatal error: {(ex.ExceptionObject as Exception)?.Message ?? ex.ExceptionObject?.ToString()}");
+        // Signing out or shutting down must not be held up by "close to tray".
+        SessionEnding += (_, _) => { if (MainWindow is MainWindow mw) mw.AllowClose = true; };
 
         // Installer/uninstaller hooks: no UI.
         if (e.Args.Contains(ExitArg)) { ExitRunningCopy(); Shutdown(); return; }
@@ -62,12 +73,23 @@ public partial class App : Application
             SettingsStore.Save(settings, log);
         }
 
+        // Earlier versions only knew the DX11 sim exe; the wildcard also covers future ones.
+        if (string.Equals(settings.SimProcessName, DirectorSettings.LegacySimProcess, StringComparison.OrdinalIgnoreCase))
+            settings.SimProcessName = DirectorSettings.DefaultSimProcess;
+
         if (settings.RunAsAdmin && !Elevation.IsElevated && !e.Args.Contains(NoElevateArg))
         {
             ReleaseSingleInstance();
+            // The sign-in task runs Director as administrator without a UAC prompt; fall back to the prompt.
+            if (StartupManager.TryStartElevatedTask())
+            {
+                ShowWhenStarted();
+                Shutdown();
+                return;
+            }
             if (Elevation.Relaunch(elevated: true)) { Shutdown(); return; }
-            log.Warn("Administrator prompt was cancelled. Running without administrator rights; some apps may not close.");
-            TryBecomeSingleInstance();
+            log.Warn($"Couldn't start as administrator ({Elevation.LastError}). Running without administrator rights; some apps may not close.");
+            if (!TryBecomeSingleInstance()) { Shutdown(); return; }
         }
 
         StartupManager.Apply(settings.StartWithWindows, settings.RunAsAdmin, log);
@@ -80,7 +102,7 @@ public partial class App : Application
         var window = new MainWindow(ViewModel);
         MainWindow = window;
         var startHidden = e.Args.Contains(StartupManager.TrayArg) && settings.StartMinimizedToTray;
-        if (!startHidden) window.Show();
+        if (!startHidden || _showRequested) window.Show();
 
         _director.Start();
         _updates.Start();
@@ -142,6 +164,17 @@ public partial class App : Application
         }
     }
 
+    /// <summary>After starting Director another way, bring its window up once it's running (up to 15s).</summary>
+    private static void ShowWhenStarted()
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(15);
+        while (DateTime.UtcNow < deadline && !SharedEvent.TrySignal(ShowEventName)) Thread.Sleep(250);
+    }
+
+    /// <summary>The tray notification shown the first time the window is closed to the tray.</summary>
+    public void ShowTrayHint() =>
+        _tray?.ShowBalloon("iRacing Director is still running", "It keeps watching for iRacing from the tray. Right-click the icon to exit.");
+
     /// <summary>Asks a running copy to exit and waits (up to 15s) for it to go.</summary>
     private static void ExitRunningCopy()
     {
@@ -168,7 +201,8 @@ public partial class App : Application
 
     public void ShowMainWindow()
     {
-        if (MainWindow is not { } w) return;
+        // A show request can arrive while we're still starting up; honour it once the window exists.
+        if (MainWindow is not { } w) { _showRequested = true; return; }
         w.Show();
         if (w.WindowState == WindowState.Minimized) w.WindowState = WindowState.Normal;
         w.Activate();

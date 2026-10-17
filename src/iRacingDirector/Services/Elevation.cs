@@ -39,14 +39,19 @@ public static class Elevation
 
         try
         {
-            Process.Start(psi);
+            Process.Start(psi)?.Dispose();
             return true;
         }
-        catch (Win32Exception ex) when (ex.NativeErrorCode == ErrorCancelled)
+        catch (Win32Exception ex)
         {
+            // 1223 = the user clicked No; anything else (blocked by policy, exe missing) is a failure too.
+            LastError = ex.NativeErrorCode == ErrorCancelled ? "the administrator prompt was cancelled" : ex.Message;
             return false;
         }
     }
+
+    /// <summary>Why the last <see cref="Relaunch"/> failed, in words for the log.</summary>
+    public static string LastError { get; private set; } = "";
 
     /// <summary>If we were started by <see cref="Relaunch"/>, wait for the previous instance to exit.</summary>
     public static void WaitForPreviousInstance(string[] args)
@@ -61,6 +66,11 @@ public static class Elevation
         catch (ArgumentException)
         {
             // Already gone.
+        }
+        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
+        {
+            // Can't wait on it (e.g. it runs as administrator and we don't); give it a moment instead.
+            System.Threading.Thread.Sleep(2000);
         }
     }
 

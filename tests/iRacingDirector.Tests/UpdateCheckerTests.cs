@@ -68,6 +68,17 @@ public class UpdateCheckerTests
         Assert.Equal(new Version(1, 2, 0), release!.Version);
         Assert.Equal("iRacingDirector-Setup-1.2.0.exe", release.SetupName);
         Assert.Equal("https://github.com/x/iRacingDirector-Setup-1.2.0.exe", release.SetupUrl);
+        Assert.Null(release.Sha256);
+    }
+
+    [Fact]
+    public void ReadsTheSetupChecksum()
+    {
+        const string json = """
+        { "tag_name": "v1.3.0", "assets": [ { "name": "iRacingDirector-Setup-1.3.0.exe",
+          "browser_download_url": "https://github.com/x/s.exe", "digest": "sha256:ABCDEF0123" } ] }
+        """;
+        Assert.Equal("abcdef0123", UpdateChecker.ParseRelease(json)!.Sha256);
     }
 
     [Theory]

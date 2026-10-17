@@ -5,7 +5,9 @@ namespace IRacingDirector.Core;
 
 public sealed class DirectorSettings : ObservableObject
 {
-    public const string DefaultSimProcess = "iRacingSim64DX11";
+    /// <summary>Matches iRacingSim64DX11.exe today and any renamed sim exe (e.g. a new graphics API) later.</summary>
+    public const string DefaultSimProcess = "iRacingSim64*";
+    public const string LegacySimProcess = "iRacingSim64DX11";
     public const string DefaultIRacingUiPath = @"C:\Program Files (x86)\iRacing\ui\iRacingUI.exe";
 
     private bool _autoMode = true;
