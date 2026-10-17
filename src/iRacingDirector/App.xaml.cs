@@ -54,7 +54,6 @@ public partial class App : Application
         if (!TryBecomeSingleInstance()) { Shutdown(); return; }
 
         var settings = SettingsStore.Load(log);
-        if (settings is not null) ThemeManager.Apply(settings.Theme);
         if (settings is null)
         {
             settings = new DirectorSettings();
