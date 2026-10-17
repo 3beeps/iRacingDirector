@@ -14,7 +14,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Product>iRacing Director</Product>
     <Description>Launches and closes your sim racing apps alongside iRacing.</Description>
-    <Version>1.2.1</Version>
+    <Version>1.2.2</Version>
     <!-- WPF takes DPI awareness from the manifest; the WinForms analyzer doesn't know that. -->
     <NoWarn>$(NoWarn);WFAC010</NoWarn>
   </PropertyGroup>
