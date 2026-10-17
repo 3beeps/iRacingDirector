@@ -17,73 +17,6 @@ function New-RoundedPath([float]$x, [float]$y, [float]$w, [float]$h, [float]$r) 
     $p
 }
 
-function New-Color([int]$r, [int]$g, [int]$b) { [System.Drawing.Color]::FromArgb(255, $r, $g, $b) }
-function New-Points([float[]]$xy) {
-    $pts = for ($i = 0; $i -lt $xy.Length; $i += 2) { New-Object System.Drawing.PointF $xy[$i], $xy[$i + 1] }
-    [System.Drawing.PointF[]]$pts
-}
-
-# GTP / hypercar in side profile, facing right. Drawn on a 256x256 grid and scaled to the icon size.
-# Small sizes drop the fine details (fin, stripe) and zoom in a little so the shape still reads.
-function Draw-Hypercar($g, [int]$s) {
-    $detail = $s -ge 48
-    $zoom = if ($s -le 24) { 1.0 } else { 0.9 }
-    $g.TranslateTransform($s / 2, $s / 2)
-    $g.ScaleTransform($s / 256 * $zoom, $s / 256 * $zoom)
-    $g.TranslateTransform(-134, -145)   # car's visual centre (wheels and wing included) to the icon centre
-
-    $white = New-Object System.Drawing.SolidBrush (New-Color 248 250 252)
-    $navy = New-Object System.Drawing.SolidBrush (New-Color 11 17 32)
-    $wheelY = 168; $wheelR = 22
-    $wheelsX = 66, 202
-
-    # Body, rear to nose: tall rear fender wrapping the rear wheel, teardrop canopy set forward,
-    # tall front fender wrapping the front wheel, long low nose down to the splitter.
-    $body = New-Object System.Drawing.Drawing2D.GraphicsPath
-    $body.AddLines((New-Points @(18,172, 18,140)))
-    $body.AddBezier(18,140, 28,124, 80,116, 100,128)
-    $body.AddBezier(100,128, 112,102, 152,96, 172,110)
-    $body.AddBezier(172,110, 180,118, 182,124, 186,126)
-    $body.AddBezier(186,126, 206,114, 230,118, 238,136)
-    $body.AddLines((New-Points @(238,136, 252,156, 254,172, 18,172)))
-    $body.CloseFigure()
-
-    # Wheel arches cut out of the body, so the wheels sit inside the fenders.
-    $shape = New-Object System.Drawing.Region $body
-    foreach ($cx in $wheelsX) {
-        $arch = New-Object System.Drawing.Drawing2D.GraphicsPath
-        $arch.AddEllipse($cx - $wheelR - 5, $wheelY - $wheelR - 5, ($wheelR + 5) * 2, ($wheelR + 5) * 2)
-        $shape.Exclude($arch)
-    }
-    $g.FillRegion($white, $shape)
-
-    # Rear wing: tall endplate, main plane, swan-neck pillar down to the tail.
-    $g.FillPolygon($white, (New-Points @(12,98, 24,98, 24,140, 12,134)))
-    $g.FillRectangle($white, 12, 98, 62, 11)
-    $g.FillPolygon($white, (New-Points @(52,109, 60,109, 68,124, 60,126)))
-
-    if ($detail) {
-        # Red livery stripe along the side, between the arches.
-        $g.SetClip($shape, [System.Drawing.Drawing2D.CombineMode]::Replace)
-        $stripe = New-Object System.Drawing.SolidBrush (New-Color 239 68 68)
-        $g.FillPolygon($stripe, (New-Points @(18,146, 254,140, 254,149, 18,155)))
-        $g.ResetClip()
-    }
-
-    # Canopy glass.
-    $glass = New-Object System.Drawing.SolidBrush (New-Color 30 58 138)
-    $g.FillPolygon($glass, (New-Points @(116,128, 128,110, 152,104, 168,112, 162,126)))
-
-    # Wheels: tyre, light rim, hub.
-    $rim = New-Object System.Drawing.SolidBrush (New-Color 203 213 225)
-    foreach ($cx in $wheelsX) {
-        $g.FillEllipse($navy, $cx - $wheelR, $wheelY - $wheelR, $wheelR * 2, $wheelR * 2)
-        $g.FillEllipse($rim, $cx - 11, $wheelY - 11, 22, 22)
-        if ($detail) { $g.FillEllipse($navy, $cx - 4, $wheelY - 4, 8, 8) }
-    }
-    $g.ResetTransform()
-}
-
 $pngs = foreach ($s in $sizes) {
     $bmp = New-Object System.Drawing.Bitmap $s, $s
     $g = [System.Drawing.Graphics]::FromImage($bmp)
@@ -96,7 +29,19 @@ $pngs = foreach ($s in $sizes) {
     $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $rect, ([System.Drawing.Color]::FromArgb(255, 37, 99, 235)), ([System.Drawing.Color]::FromArgb(255, 15, 23, 42)), 45
     $g.FillPath($brush, $bg)
 
-    Draw-Hypercar $g $s
+    # Checkered flag: 4x3 grid with a pole.
+    $poleX = $s * 0.24
+    $poleW = [Math]::Max(1, $s * 0.06)
+    $g.FillRectangle([System.Drawing.Brushes]::White, $poleX, ($s * 0.18), $poleW, ($s * 0.64))
+    $fx = $poleX + $poleW
+    $fy = $s * 0.20
+    $cell = $s * 0.13
+    for ($r = 0; $r -lt 3; $r++) {
+        for ($c = 0; $c -lt 4; $c++) {
+            $b = if ((($r + $c) % 2) -eq 0) { [System.Drawing.Brushes]::White } else { New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 15, 23, 42)) }
+            $g.FillRectangle($b, ($fx + $c * $cell), ($fy + $r * $cell), $cell, $cell)
+        }
+    }
     $g.Dispose()
     $ms = New-Object System.IO.MemoryStream
     if ($s -ge 256) {
