@@ -118,11 +118,13 @@
                                        Text="Started in this order when the sim starts, closed in reverse when it exits." />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                            <Button Click="Import_Click" Margin="0,0,8,0"
-                                    Visibility="{Binding CanImportIRacingManager, Converter={StaticResource BoolToVis}}">
-                                <TextBlock Text="Import from iRacing Manager" />
+                            <Button Click="FindApps_Click" Margin="0,0,8,0" ToolTip="Look for sim racing apps on this PC that aren't added yet">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource Icon}" Text="&#xE721;" Margin="0,0,8,0" />
+                                    <TextBlock Text="Find apps" />
+                                </StackPanel>
                             </Button>
-                            <Button Style="{StaticResource PrimaryButton}" Click="AddApp_Click">
+                            <Button x:Name="AddAppButton" AutomationProperties.Name="Add app" Style="{StaticResource PrimaryButton}" Click="AddApp_Click">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Style="{StaticResource Icon}" Text="&#xE710;" Margin="0,0,8,0" />
                                     <TextBlock Text="Add app" />
@@ -151,11 +153,14 @@
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="90" />
                                                     <ColumnDefinition Width="90" />
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
+
+                                                <Image Grid.Column="1" Source="{Binding Path, Converter={StaticResource PathToIcon}}" Width="28" Height="28" Margin="0,0,14,0" VerticalAlignment="Center" />
 
                                                 <Ellipse Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,14,0">
                                                     <Ellipse.Style>
@@ -176,7 +181,7 @@
                                                     </Ellipse.Style>
                                                 </Ellipse>
 
-                                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
+                                                <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,12,0">
                                                     <StackPanel Orientation="Horizontal">
                                                         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" />
                                                         <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource WarnBrush}" Margin="10,0,0,0" FontSize="12" VerticalAlignment="Center" />
@@ -184,10 +189,10 @@
                                                     <TextBlock Text="{Binding Path}" Style="{StaticResource Muted}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" ToolTip="{Binding Path}" />
                                                 </StackPanel>
 
-                                                <CheckBox Grid.Column="2" Style="{StaticResource Switch}" IsChecked="{Binding StartWithSession}" ToolTip="Start when the sim starts" />
-                                                <CheckBox Grid.Column="3" Style="{StaticResource Switch}" IsChecked="{Binding StopWithSession}" ToolTip="Close when the sim exits" />
+                                                <CheckBox Grid.Column="3" Style="{StaticResource Switch}" IsChecked="{Binding StartWithSession}" ToolTip="Start when the sim starts" />
+                                                <CheckBox Grid.Column="4" Style="{StaticResource Switch}" IsChecked="{Binding StopWithSession}" ToolTip="Close when the sim exits" />
 
-                                                <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center">
                                                     <Button Style="{StaticResource IconButton}" Click="LaunchApp_Click" ToolTip="Start now">
                                                         <TextBlock Style="{StaticResource Icon}" Text="&#xE768;" />
                                                     </Button>
@@ -218,6 +223,7 @@
                             <TextBlock Text="No apps yet" Style="{StaticResource H2}" HorizontalAlignment="Center" />
                             <TextBlock Style="{StaticResource Muted}" Margin="0,6,0,0" HorizontalAlignment="Center"
                                        Text="Add SimHub, Crew Chief, overlays, anything you run with iRacing." />
+                            <Button Style="{StaticResource PrimaryButton}" Content="Find my apps" HorizontalAlignment="Center" Margin="0,16,0,0" Click="FindApps_Click" />
                         </StackPanel>
                     </Grid>
                 </DockPanel>

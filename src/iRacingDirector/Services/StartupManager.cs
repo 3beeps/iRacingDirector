@@ -44,6 +44,32 @@ public static class StartupManager
         }
     }
 
+    /// <summary>Removes every startup entry (used by the uninstaller). Asks for admin only if an elevated task exists.</summary>
+    public static void RemoveAll(Logger log)
+    {
+        try
+        {
+            SetRunKey(false);
+            if (!TaskExists()) return;
+            if (Elevation.IsElevated)
+            {
+                DeleteTask();
+                return;
+            }
+            using var p = Process.Start(new ProcessStartInfo("schtasks.exe", $"/Delete /TN \"{EntryName}\" /F")
+            {
+                UseShellExecute = true,
+                Verb = "runas",
+                WindowStyle = ProcessWindowStyle.Hidden,
+            });
+            p?.WaitForExit(30000);
+        }
+        catch (Exception ex)
+        {
+            log.Warn($"Could not remove the startup entry: {ex.Message}");
+        }
+    }
+
     private static void SetRunKey(bool enabled)
     {
         using var key = Registry.CurrentUser.CreateSubKey(RunKeyPath, writable: true);

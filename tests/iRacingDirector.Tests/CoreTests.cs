@@ -81,6 +81,37 @@ public class ProcessMatcherTests
     }
 }
 
+public class CatalogTests
+{
+    [Fact]
+    public void DetectsAppsByShortcutTargetOrName()
+    {
+        var programs = new List<InstalledProgram>
+        {
+            new("SimHub", @"D:\Games\SimHub\SimHubWPF.exe"),          // matched by exe name, unusual folder
+            new("Garage 61 Telemetry Agent", @"E:\g61\garage61-launcher.exe"),
+            new("Kapps", @"E:\Kapps\Kapps.exe"),                      // matched by shortcut name
+            new("Notepad++", @"C:\npp\notepad++.exe"),                // not a racing app
+        };
+
+        var found = DefaultApps.Detect(programs);
+
+        Assert.Contains(found, d => d.Known.Name == "SimHub" && d.Path == @"D:\Games\SimHub\SimHubWPF.exe" && d.Known.NeedsAdmin);
+        Assert.Contains(found, d => d.Known.Name == "Garage 61" && d.Known.ExtraProcessNames == "garage61-agent*");
+        Assert.Contains(found, d => d.Known.Name == "Kapps");
+        Assert.DoesNotContain(found, d => d.Path.Contains("notepad"));
+    }
+
+    [Fact]
+    public void LookupGivesKnownSettingsForBrowsedFiles()
+    {
+        var entry = DefaultApps.Lookup(@"X:\anywhere\garage61-launcher.exe")!.ToEntry(@"X:\anywhere\garage61-launcher.exe");
+        Assert.Equal("Garage 61", entry.Name);
+        Assert.Equal("garage61-agent*", entry.ExtraProcessNames);
+        Assert.Null(DefaultApps.Lookup(@"C:\x\random.exe"));
+    }
+}
+
 public class ImporterTests
 {
     [Fact]

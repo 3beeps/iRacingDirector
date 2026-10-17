@@ -64,22 +64,21 @@ public partial class MainWindow : Window
 
     private void AddApp_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog
-        {
-            Title = "Choose the app to add",
-            Filter = "Programs (*.exe)|*.exe|All files (*.*)|*.*",
-        };
-        if (dialog.ShowDialog(this) != true) return;
+        var picker = new ProgramPickerWindow { Owner = this };
+        if (picker.ShowDialog() != true || picker.Result is not { } program) return;
 
-        var app = new AppEntry
-        {
-            Name = FileVersionInfo.GetVersionInfo(dialog.FileName).FileDescription is { Length: > 0 } d
-                ? d
-                : System.IO.Path.GetFileNameWithoutExtension(dialog.FileName),
-            Path = dialog.FileName,
-        };
+        // Known apps come with the right settings (e.g. Garage 61's agent process).
+        var app = DefaultApps.Lookup(program.Path)?.ToEntry(program.Path)
+                  ?? new AppEntry { Name = program.Name, Path = program.Path };
         var editor = new AppEditorWindow(app) { Owner = this, Title = "Add app" };
         if (editor.ShowDialog() == true) _vm.Apps.Add(app);
+    }
+
+    private void FindApps_Click(object sender, RoutedEventArgs e)
+    {
+        var before = _vm.Apps.Count;
+        if (new SetupWindow(_vm.Settings, firstRun: false) { Owner = this, WindowStartupLocation = WindowStartupLocation.CenterOwner }.ShowDialog() == true)
+            _vm.Log.Info($"Added {_vm.Apps.Count - before} app(s).");
     }
 
     private void EditApp_Click(object sender, RoutedEventArgs e)
@@ -102,20 +101,6 @@ public partial class MainWindow : Window
     private void MoveDown_Click(object sender, RoutedEventArgs e) => _vm.Move(AppOf(sender), +1);
     private async void LaunchApp_Click(object sender, RoutedEventArgs e) => await _vm.Director.LaunchAppAsync(AppOf(sender));
     private async void CloseApp_Click(object sender, RoutedEventArgs e) => await _vm.Director.CloseAppAsync(AppOf(sender));
-
-    private void Import_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var added = _vm.ImportIRacingManager();
-            MessageBox.Show(this, added > 0 ? $"Imported {added} app(s) from iRacing Manager." : "Everything from iRacing Manager is already here.",
-                "Import", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(this, $"Could not read iRacing Manager settings:\n{ex.Message}", "Import", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-    }
 
     // ---- Activity / Settings ----
 

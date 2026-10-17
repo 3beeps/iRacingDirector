@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Windows;
-using System.Windows.Threading;
 using IRacingDirector.Core;
 using IRacingDirector.Services;
 using IRacingDirector.UI;
@@ -11,14 +10,20 @@ namespace IRacingDirector;
 
 public partial class App : Application
 {
+    public const string ExitArg = "--exit";
+    public const string UninstallArg = "--uninstall";
+    public const string NoElevateArg = "--no-elevate";
+
     // Scoped to the data folder so a test copy (IRACING_DIRECTOR_DATA) can run beside the real one.
     private static readonly string InstanceKey = Convert.ToHexString(
         System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(AppPaths.DataDir.ToLowerInvariant())))[..12];
     private static readonly string MutexName = $@"Local\iRacingDirector.SingleInstance.{InstanceKey}";
     private static readonly string ShowEventName = $@"Local\iRacingDirector.Show.{InstanceKey}";
+    private static readonly string ExitEventName = $@"Local\iRacingDirector.Exit.{InstanceKey}";
 
     private Mutex? _mutex;
     private EventWaitHandle? _showEvent;
+    private EventWaitHandle? _exitEvent;
     private TrayIcon? _tray;
     private Director? _director;
 
@@ -34,12 +39,29 @@ public partial class App : Application
             ex.Handled = true;
         };
 
+        // Installer/uninstaller hooks: no UI.
+        if (e.Args.Contains(ExitArg)) { ExitRunningCopy(); Shutdown(); return; }
+        if (e.Args.Contains(UninstallArg))
+        {
+            ExitRunningCopy();
+            StartupManager.RemoveAll(log);
+            Shutdown();
+            return;
+        }
+
         Elevation.WaitForPreviousInstance(e.Args);
         if (!TryBecomeSingleInstance()) { Shutdown(); return; }
 
-        var settings = SettingsStore.Load(log) ?? CreateFirstRunSettings(log);
+        var settings = SettingsStore.Load(log);
+        if (settings is null)
+        {
+            settings = new DirectorSettings();
+            new SetupWindow(settings, firstRun: true).ShowDialog();
+            log.Info($"Setup finished with {settings.Apps.Count} app(s).");
+            SettingsStore.Save(settings, log);
+        }
 
-        if (settings.RunAsAdmin && !Elevation.IsElevated && !e.Args.Contains("--no-elevate"))
+        if (settings.RunAsAdmin && !Elevation.IsElevated && !e.Args.Contains(NoElevateArg))
         {
             ReleaseSingleInstance();
             if (Elevation.Relaunch(elevated: true)) { Shutdown(); return; }
@@ -61,56 +83,44 @@ public partial class App : Application
         _director.Start();
     }
 
-    private static DirectorSettings CreateFirstRunSettings(Logger log)
-    {
-        var settings = new DirectorSettings
-        {
-            // SimHub and friends run as administrator; without this Director can't close them.
-            RunAsAdmin = true,
-        };
-        foreach (var app in DefaultApps.Detect()) settings.Apps.Add(app);
-
-        if (IRacingManagerImporter.IsAvailable)
-        {
-            try
-            {
-                var added = IRacingManagerImporter.MergeInto(settings.Apps, IRacingManagerImporter.Read(AppPaths.IRacingManagerSettings));
-                if (added > 0) log.Info($"Imported {added} app(s) from iRacing Manager.");
-            }
-            catch (Exception ex)
-            {
-                log.Warn($"Could not import iRacing Manager settings: {ex.Message}");
-            }
-        }
-
-        log.Info($"First run: found {settings.Apps.Count} app(s).");
-        SettingsStore.Save(settings, log);
-        return settings;
-    }
-
     private bool TryBecomeSingleInstance()
     {
-        _mutex = new Mutex(initiallyOwned: true, MutexName, out var createdNew);
+        bool createdNew;
+        try
+        {
+            _mutex = new Mutex(initiallyOwned: true, MutexName, out createdNew);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Another copy runs as administrator; we can't open its mutex, but it exists.
+            createdNew = false;
+            _mutex = null;
+        }
+
         if (!createdNew)
         {
-            try { EventWaitHandle.OpenExisting(ShowEventName).Set(); }
-            catch { /* The other instance may be elevated; nothing more we can do. */ }
-            _mutex.Dispose();
+            SharedEvent.TrySignal(ShowEventName);
+            _mutex?.Dispose();
             _mutex = null;
             return false;
         }
 
-        _showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowEventName);
-        var handle = _showEvent;
+        _showEvent = SharedEvent.Create(ShowEventName);
+        _exitEvent = SharedEvent.Create(ExitEventName);
+        var handles = new WaitHandle[] { _showEvent, _exitEvent };
         var thread = new Thread(() =>
         {
             try
             {
-                while (handle.WaitOne())
-                    Dispatcher.BeginInvoke(() => ShowMainWindow());
+                while (true)
+                {
+                    var which = WaitHandle.WaitAny(handles);
+                    if (which == 0) Dispatcher.BeginInvoke(() => ShowMainWindow());
+                    else { Dispatcher.BeginInvoke(() => ExitApp()); return; }
+                }
             }
             catch (ObjectDisposedException) { }
-        }) { IsBackground = true, Name = "ShowSignal" };
+        }) { IsBackground = true, Name = "InstanceSignals" };
         thread.Start();
         return true;
     }
@@ -119,11 +129,35 @@ public partial class App : Application
     {
         _showEvent?.Dispose();
         _showEvent = null;
+        _exitEvent?.Dispose();
+        _exitEvent = null;
         if (_mutex is not null)
         {
             _mutex.ReleaseMutex();
             _mutex.Dispose();
             _mutex = null;
+        }
+    }
+
+    /// <summary>Asks a running copy to exit and waits (up to 15s) for it to go.</summary>
+    private static void ExitRunningCopy()
+    {
+        if (!SharedEvent.TrySignal(ExitEventName)) return;
+        var deadline = DateTime.UtcNow.AddSeconds(15);
+        while (DateTime.UtcNow < deadline && InstanceExists()) Thread.Sleep(250);
+    }
+
+    private static bool InstanceExists()
+    {
+        try
+        {
+            if (!Mutex.TryOpenExisting(MutexName, out var m)) return false;
+            m.Dispose();
+            return true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return true;
         }
     }
 

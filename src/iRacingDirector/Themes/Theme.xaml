@@ -29,6 +29,7 @@
     <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
     <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    <ui:PathToIconConverter x:Key="PathToIcon" xmlns:ui="clr-namespace:IRacingDirector.UI" />
 
     <!-- Text -->
     <!-- Foreground is inherited from the window/control so text inside buttons follows the button. -->

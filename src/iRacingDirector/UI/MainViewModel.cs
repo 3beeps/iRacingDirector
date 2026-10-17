@@ -46,7 +46,6 @@ public sealed class MainViewModel : ObservableObject
 
     public bool IsElevated => Elevation.IsElevated;
     public string ElevationText => IsElevated ? "Running as administrator." : "Running as a standard user.";
-    public bool CanImportIRacingManager => IRacingManagerImporter.IsAvailable;
     public string Version => typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "";
 
     public string SessionDuration { get => _sessionDuration; private set => SetField(ref _sessionDuration, value); }
@@ -67,13 +66,6 @@ public sealed class MainViewModel : ObservableObject
         var j = i + delta;
         if (i < 0 || j < 0 || j >= Apps.Count) return;
         Apps.Move(i, j);
-    }
-
-    public int ImportIRacingManager()
-    {
-        var added = IRacingManagerImporter.MergeInto(Apps, IRacingManagerImporter.Read(AppPaths.IRacingManagerSettings));
-        Log.Info(added > 0 ? $"Imported {added} app(s) from iRacing Manager." : "Nothing new to import from iRacing Manager.");
-        return added;
     }
 
     private void UpdateClock()
