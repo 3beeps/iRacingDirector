@@ -147,10 +147,18 @@ public sealed class UpdateChecker : ObservableObject, IDisposable
     /// <summary>Downloads the setup to %TEMP% and runs it silently. The installer closes and restarts Director.</summary>
     public async Task InstallAsync()
     {
-        if (Available is not { } release || IsInstalling) return;
+        if (Available is null || IsInstalling) return;
         IsInstalling = true;
         try
         {
+            // The banner may be hours old; install whatever is newest now, not the version it first saw.
+            await CheckAsync();
+            if (Available is not { } release)
+            {
+                IsInstalling = false;
+                return;
+            }
+
             // A fresh folder per download, so nothing else can have planted or swapped the file beforehand.
             var folder = Path.Combine(Path.GetTempPath(), "iRacingDirector-update-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(folder);
