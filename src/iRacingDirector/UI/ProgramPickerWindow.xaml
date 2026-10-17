@@ -38,10 +38,10 @@
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Surface2Brush}" />
+                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Surface2Brush}" />
                                             </Trigger>
                                             <Trigger Property="IsSelected" Value="True">
-                                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentBrush}" />
+                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentBrush}" />
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
@@ -54,7 +54,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <Image Source="{Binding Path, Converter={StaticResource PathToIcon}}" Width="24" Height="24" Margin="0,0,12,0" />
                                 <StackPanel>
-                                    <TextBlock Text="{Binding Name}" Foreground="{StaticResource TextBrush}" />
+                                    <TextBlock Text="{Binding Name}" Foreground="{DynamicResource TextBrush}" />
                                     <TextBlock Text="{Binding Path}" Style="{StaticResource Muted}" FontSize="11" TextTrimming="CharacterEllipsis" MaxWidth="420" />
                                 </StackPanel>
                             </StackPanel>

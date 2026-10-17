@@ -14,7 +14,7 @@
         </Grid.ColumnDefinitions>
 
         <!-- Sidebar -->
-        <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+        <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
             <DockPanel Margin="14,18">
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4,0,0,22">
                     <Image Source="/Assets/director.ico" Width="30" Height="30" />
@@ -27,6 +27,11 @@
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Bottom">
+                    <Button x:Name="ThemeButton" Style="{StaticResource IconButton}" Width="26" Height="26" Padding="0"
+                            HorizontalAlignment="Left" Margin="0,0,0,4" Click="ThemeToggle_Click"
+                            ToolTip="{Binding ThemeTooltip}" AutomationProperties.Name="Switch theme">
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE790;" FontSize="13" />
+                    </Button>
                     <TextBlock Style="{StaticResource Muted}" Text="{Binding ElevationText}" TextWrapping="Wrap" Margin="4,0" FontSize="11" />
                 </StackPanel>
 
@@ -53,11 +58,14 @@
             </DockPanel>
         </Border>
 
+        <!-- Theme stripe along the top (rainbow in Pride, invisible in Dark). -->
+        <Border Grid.ColumnSpan="2" Height="4" VerticalAlignment="Top" Background="{DynamicResource StripeBrush}" IsHitTestVisible="False" Panel.ZIndex="1" />
+
         <DockPanel Grid.Column="1" Margin="24,20,24,20">
 
             <!-- Update banner -->
             <Border DockPanel.Dock="Top" Margin="0,0,0,12" Padding="16,10" CornerRadius="8" Cursor="Hand"
-                    Background="{StaticResource AccentBrush}" MouseLeftButtonUp="UpdateBanner_Click"
+                    Background="{DynamicResource PrimaryBrush}" MouseLeftButtonUp="UpdateBanner_Click"
                     Visibility="{Binding Updates.IsUpdateAvailable, Converter={StaticResource BoolToVis}}"
                     AutomationProperties.Name="Install update">
                 <Grid>
@@ -86,13 +94,13 @@
                     <Ellipse Width="14" Height="14" VerticalAlignment="Center">
                         <Ellipse.Style>
                             <Style TargetType="Ellipse">
-                                <Setter Property="Fill" Value="{StaticResource MutedBrush}" />
+                                <Setter Property="Fill" Value="{DynamicResource MutedBrush}" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding Director.State}" Value="{x:Static core:SessionState.InSession}">
-                                        <Setter Property="Fill" Value="{StaticResource GoodBrush}" />
+                                        <Setter Property="Fill" Value="{DynamicResource GoodBrush}" />
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding Director.State}" Value="{x:Static core:SessionState.Ending}">
-                                        <Setter Property="Fill" Value="{StaticResource WarnBrush}" />
+                                        <Setter Property="Fill" Value="{DynamicResource WarnBrush}" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -184,15 +192,15 @@
                                                 <Ellipse Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,14,0">
                                                     <Ellipse.Style>
                                                         <Style TargetType="Ellipse">
-                                                            <Setter Property="Fill" Value="{StaticResource BorderBrush}" />
+                                                            <Setter Property="Fill" Value="{DynamicResource BorderBrush}" />
                                                             <Setter Property="ToolTip" Value="Not running" />
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsRunning}" Value="True">
-                                                                    <Setter Property="Fill" Value="{StaticResource GoodBrush}" />
+                                                                    <Setter Property="Fill" Value="{DynamicResource GoodBrush}" />
                                                                     <Setter Property="ToolTip" Value="Running" />
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding PathExists}" Value="False">
-                                                                    <Setter Property="Fill" Value="{StaticResource BadBrush}" />
+                                                                    <Setter Property="Fill" Value="{DynamicResource BadBrush}" />
                                                                     <Setter Property="ToolTip" Value="File not found. Edit the app to fix its path." />
                                                                 </DataTrigger>
                                                             </Style.Triggers>
@@ -203,7 +211,7 @@
                                                 <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,12,0">
                                                     <StackPanel Orientation="Horizontal">
                                                         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" />
-                                                        <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource WarnBrush}" Margin="10,0,0,0" FontSize="12" VerticalAlignment="Center" />
+                                                        <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource WarnBrush}" Margin="10,0,0,0" FontSize="12" VerticalAlignment="Center" />
                                                     </StackPanel>
                                                     <TextBlock Text="{Binding Path}" Style="{StaticResource Muted}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" ToolTip="{Binding Path}" />
                                                 </StackPanel>
@@ -284,22 +292,22 @@
                                         <Ellipse Grid.Column="1" Width="7" Height="7" VerticalAlignment="Center" HorizontalAlignment="Left">
                                             <Ellipse.Style>
                                                 <Style TargetType="Ellipse">
-                                                    <Setter Property="Fill" Value="{StaticResource MutedBrush}" />
+                                                    <Setter Property="Fill" Value="{DynamicResource MutedBrush}" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding Level}" Value="{x:Static svc:LogLevel.Success}">
-                                                            <Setter Property="Fill" Value="{StaticResource GoodBrush}" />
+                                                            <Setter Property="Fill" Value="{DynamicResource GoodBrush}" />
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding Level}" Value="{x:Static svc:LogLevel.Warning}">
-                                                            <Setter Property="Fill" Value="{StaticResource WarnBrush}" />
+                                                            <Setter Property="Fill" Value="{DynamicResource WarnBrush}" />
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding Level}" Value="{x:Static svc:LogLevel.Error}">
-                                                            <Setter Property="Fill" Value="{StaticResource BadBrush}" />
+                                                            <Setter Property="Fill" Value="{DynamicResource BadBrush}" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </Ellipse.Style>
                                         </Ellipse>
-                                        <TextBlock Grid.Column="2" Text="{Binding Message}" TextWrapping="Wrap" Foreground="{StaticResource TextBrush}" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}" />
                                     </Grid>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>

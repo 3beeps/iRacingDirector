@@ -15,6 +15,7 @@ public sealed class DirectorSettings : ObservableObject
     private bool _runAsAdmin;
     private bool _onlyCloseAppsDirectorStarted;
     private bool _checkForUpdates = true;
+    private string _theme = "Dark";
     private int _sessionEndDelaySeconds = 15;
     private int _closeGraceSeconds = 5;
     private string _simProcessName = DefaultSimProcess;
@@ -35,6 +36,9 @@ public sealed class DirectorSettings : ObservableObject
 
     /// <summary>Look for a newer release on GitHub at startup and once a day.</summary>
     public bool CheckForUpdates { get => _checkForUpdates; set => SetField(ref _checkForUpdates, value); }
+
+    /// <summary>Color theme name ("Dark" or "Pride").</summary>
+    public string Theme { get => _theme; set => SetField(ref _theme, value); }
 
     /// <summary>
     /// How long the sim must stay closed before apps are shut down. Prevents app churn

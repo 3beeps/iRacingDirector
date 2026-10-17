@@ -106,6 +106,8 @@ public partial class MainWindow : Window
 
     // ---- Activity / Settings ----
 
+    private void ThemeToggle_Click(object sender, RoutedEventArgs e) => _vm.ToggleTheme();
+
     private void OpenLogFolder_Click(object sender, RoutedEventArgs e) =>
         Process.Start(new ProcessStartInfo(AppPaths.DataDir) { UseShellExecute = true });
 

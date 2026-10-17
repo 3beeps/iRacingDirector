@@ -48,6 +48,11 @@ public sealed class MainViewModel : ObservableObject
 
     public bool IsElevated => Elevation.IsElevated;
     public string ElevationText => IsElevated ? "Running as administrator." : "Running as a standard user.";
+
+    public string ThemeTooltip =>
+        $"Theme: {ThemeManager.Normalize(Settings.Theme)}. Click for {ThemeManager.Next(Settings.Theme)}.";
+
+    public void ToggleTheme() => Settings.Theme = ThemeManager.Next(Settings.Theme);
     public string Version => typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "";
 
     public string SessionDuration { get => _sessionDuration; private set => SetField(ref _sessionDuration, value); }
@@ -89,6 +94,10 @@ public sealed class MainViewModel : ObservableObject
             case nameof(DirectorSettings.RunAsAdmin):
                 StartupManager.Apply(Settings.StartWithWindows, Settings.RunAsAdmin, Log);
                 if (Settings.RunAsAdmin != IsElevated) RestartRequired?.Invoke();
+                break;
+            case nameof(DirectorSettings.Theme):
+                ThemeManager.Apply(Settings.Theme);
+                OnPropertyChanged(nameof(ThemeTooltip));
                 break;
             case nameof(DirectorSettings.AutoMode):
                 Log.Info(Settings.AutoMode ? "Automatic mode on." : "Automatic mode off. Apps won't start or close on their own.");
